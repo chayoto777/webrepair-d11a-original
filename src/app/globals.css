@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+/* ========== CSS Custom Properties (Military Theme) ========== */
+@theme {
+  --color-primary: #3a4f32;
+  --color-primary-hover: #2b3925;
+  --color-success: #4d6438;
+  --color-warning: #967232;
+  --color-military-olive: #4d6438;
+  --color-military-khaki: #b59f81;
+  --color-military-dark: #2c3e50;
+  --color-military-light: #f3f6f3;
+  --color-danger-red: #a72847;
+  --color-info-blue: #0d6efd;
+  --color-soft-bg: #f3f6f3;
+  --font-sarabun: 'Sarabun', sans-serif;
+}
+
+/* ========== Base Styles ========== */
+body {
+  font-family: var(--font-sarabun);
+  background-color: var(--color-soft-bg);
+  color: var(--color-military-dark);
+}
+
+/* ========== Animations ========== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-badge {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(167, 40, 71, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(167, 40, 71, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(167, 40, 71, 0); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-pulse-badge {
+  animation: pulse-badge 2s infinite;
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ========== Calendar Styles ========== */
+.calendar-table td.day-today {
+  background-color: #e6dfc7;
+  border: 2px solid var(--color-military-khaki) !important;
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-military-khaki);
+  border-radius: 3px;
+}
