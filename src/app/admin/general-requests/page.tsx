@@ -69,7 +69,7 @@ export default function AdminGeneralRequestsPage() {
                         <div className="flex gap-1">
                           {req.status === 'pending' && (
                             <>
-                              <button onClick={() => updateStatus(req.id, 'approved')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">อนุมัติ</button>
+                              <button onClick={() => updateStatus(req.id, 'in_progress')} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200">รับเรื่อง</button>
                               <button onClick={() => updateStatus(req.id, 'rejected')} className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded hover:bg-yellow-200">ปฏิเสธ</button>
                             </>
                           )}

@@ -25,8 +25,8 @@ export default function MechanicPartsPage() {
 
     const [partsRes, jobsRes, reqRes] = await Promise.all([
       supabase.from('parts').select('*').order('part_name_th'),
-      supabase.from('maintenance_requests').select('id, description, vehicle_part:vehicle_parts(vehicle:vehicles(vehicle_name))').eq('assigned_to_user_id', user.id).in('status', ['in_progress', 'requisitioning', 'repairing']),
-      supabase.from('part_requisitions').select('*, part:parts(part_name_th)').eq('requested_by', user.id).order('created_at', { ascending: false }),
+      supabase.from('maintenance_requests').select('id, report_details, vehicle_part:vehicle_parts(vehicle:vehicles(vehicle_name))').eq('assigned_to_user_id', user.id).in('status', ['in_progress', 'requisitioning', 'repairing']),
+      supabase.from('part_requisitions').select('*, part:parts(part_name_th)').eq('requested_by_user_id', user.id).order('created_at', { ascending: false }),
     ])
 
     setParts(partsRes.data || [])
@@ -45,7 +45,7 @@ export default function MechanicPartsPage() {
       maintenance_request_id: selectedJob || null,
       part_id: selectedPart,
       quantity_requested: qty,
-      requested_by: user.id,
+      requested_by_user_id: user.id,
     })
 
     if (error) {
@@ -97,7 +97,7 @@ export default function MechanicPartsPage() {
             <select value={selectedJob} onChange={e => setSelectedJob(e.target.value)} className="px-4 py-2.5 border rounded-lg outline-none">
               <option value="">เลือกงานซ่อม (ถ้ามี)</option>
               {myJobs.map(j => (
-                <option key={j.id} value={j.id}>{j.vehicle_part?.vehicle?.vehicle_name || 'งาน'} - {j.description?.slice(0, 30) || j.id.slice(0, 8)}</option>
+                <option key={j.id} value={j.id}>{j.vehicle_part?.vehicle?.vehicle_name || 'งาน'} - {j.report_details?.slice(0, 30) || j.id.slice(0, 8)}</option>
               ))}
             </select>
             <input type="number" value={qty} onChange={e => setQty(+e.target.value)} min={1} placeholder="จำนวน" className="px-4 py-2.5 border rounded-lg outline-none" required />
