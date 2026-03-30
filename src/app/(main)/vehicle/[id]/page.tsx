@@ -1,33 +1,54 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import StatusBadge from '@/components/StatusBadge'
-import type { Vehicle, VehiclePart } from '@/types/database'
-import { AlertTriangle, Plus, Trash2, Image as ImageIcon } from 'lucide-react'
+import type { VehiclePart } from '@/types/database'
+import { AlertTriangle, Trash2, Image as ImageIcon, X, BookOpen, ChevronLeft } from 'lucide-react'
+
+interface Vehicle {
+  id: string
+  vehicle_name: string
+  license_plate: string
+  vehicle_image_path: string | null
+  project_affiliation: string | null
+}
 
 export default function VehiclePage() {
   const { id } = useParams()
+  const router = useRouter()
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [vehicleParts, setVehicleParts] = useState<VehiclePart[]>([])
   const [allParts, setAllParts] = useState<{ id: string; part_name_th: string }[]>([])
   const [showReportForm, setShowReportForm] = useState<string | null>(null)
-  const [reportDetails, setReportDetails] = useState('')
-  const [isUrgent, setIsUrgent] = useState(false)
+  const [reportDetails, setReportDetails] = useState<{ [key: string]: string }>({})
+  const [isUrgent, setIsUrgent] = useState<{ [key: string]: boolean }>({})
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const [guideModal, setGuideModal] = useState<VehiclePart | null>(null)
+
+  // General report form (top)
+  const [generalPartId, setGeneralPartId] = useState('')
+  const [generalDetails, setGeneralDetails] = useState('')
+  const [generalUrgent, setGeneralUrgent] = useState(false)
 
   // Add part form
-  const [showAddPart, setShowAddPart] = useState(false)
   const [selectedPartId, setSelectedPartId] = useState('')
-  const [installDate, setInstallDate] = useState('')
+  const [installDate, setInstallDate] = useState(new Date().toISOString().split('T')[0])
 
   const supabase = createClient()
 
   useEffect(() => {
     loadData()
   }, [id])
+
+  useEffect(() => {
+    if (message.text) {
+      const t = setTimeout(() => setMessage({ type: '', text: '' }), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [message])
 
   async function loadData() {
     setLoading(true)
@@ -41,7 +62,11 @@ export default function VehiclePage() {
       .order('install_date', { ascending: false })
     setVehicleParts(vp || [])
 
-    const { data: parts } = await supabase.from('parts').select('id, part_name_th')
+    const { data: parts } = await supabase
+      .from('parts')
+      .select('id, part_name_th')
+      .neq('part_id', 'guest_info')
+      .order('part_name_th')
     setAllParts(parts || [])
     setLoading(false)
   }
@@ -58,9 +83,8 @@ export default function VehiclePage() {
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาด: ' + error.message })
     } else {
       setMessage({ type: 'success', text: 'เพิ่มอะไหล่สำเร็จ' })
-      setShowAddPart(false)
       setSelectedPartId('')
-      setInstallDate('')
+      setInstallDate(new Date().toISOString().split('T')[0])
       loadData()
     }
   }
@@ -68,30 +92,59 @@ export default function VehiclePage() {
   async function handleReport(vehiclePartId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-
+    const details = reportDetails[vehiclePartId] || ''
+    if (!details.trim()) return
     const { error } = await supabase.from('maintenance_requests').insert({
       vehicle_part_id: vehiclePartId,
       reported_by_user_id: user.id,
-      report_details: reportDetails,
-      is_urgent: isUrgent,
+      report_details: details,
+      is_urgent: isUrgent[vehiclePartId] || false,
       status: 'pending',
       request_date: new Date().toISOString(),
     })
-
     if (error) {
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาด: ' + error.message })
     } else {
-      setMessage({ type: 'success', text: 'แจ้งซ่อมสำเร็จ' })
+      setMessage({ type: 'success', text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย' + ((isUrgent[vehiclePartId]) ? ' (เร่งด่วน)' : '') })
       setShowReportForm(null)
-      setReportDetails('')
-      setIsUrgent(false)
+      setReportDetails(prev => ({ ...prev, [vehiclePartId]: '' }))
+      setIsUrgent(prev => ({ ...prev, [vehiclePartId]: false }))
     }
   }
 
-  async function handleDeletePart(vpId: string) {
-    if (!confirm('ต้องการลบอะไหล่นี้?')) return
+  async function handleGeneralReport(e: React.FormEvent) {
+    e.preventDefault()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { error } = await supabase.from('maintenance_requests').insert({
+      vehicle_part_id: generalPartId,
+      reported_by_user_id: user.id,
+      report_details: generalDetails,
+      is_urgent: generalUrgent,
+      status: 'pending',
+      request_date: new Date().toISOString(),
+    })
+    if (error) {
+      setMessage({ type: 'error', text: 'เกิดข้อผิดพลาด: ' + error.message })
+    } else {
+      setMessage({ type: 'success', text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย' + (generalUrgent ? ' (เร่งด่วน)' : '') })
+      setGeneralPartId('')
+      setGeneralDetails('')
+      setGeneralUrgent(false)
+    }
+  }
+
+  async function handleDeletePart(vpId: string, partName: string) {
+    if (!confirm(`คุณแน่ใจหรือไม่ ว่าต้องการลบอะไหล่ '${partName}' ออกจากรถคันนี้?\n\n(การกระทำนี้จะลบประวัติการแจ้งซ่อมของอะไหล่ชิ้นนี้ทั้งหมด!)`)) return
     await supabase.from('vehicle_parts').delete().eq('id', vpId)
+    setMessage({ type: 'success', text: 'ลบอะไหล่เรียบร้อย' })
     loadData()
+  }
+
+  function getImageUrl(path: string | null | undefined) {
+    if (!path || path === 'no data') return null
+    if (path.startsWith('http')) return path
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/uploads/${path}`
   }
 
   if (loading) {
@@ -103,159 +156,270 @@ export default function VehiclePage() {
   }
 
   if (!vehicle) {
-    return <div className="max-w-7xl mx-auto px-4 py-8 text-center text-gray-500">ไม่พบข้อมูลยานพาหนะ</div>
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4">
+          ไม่พบยานพาหนะ หรือคุณไม่มีสิทธิ์เข้าถึง
+        </div>
+      </div>
+    )
   }
 
-  const getStatusBorderColor = (status: string) => {
-    switch (status) {
-      case 'good': return 'border-l-green-500'
-      case 'worn': return 'border-l-yellow-500'
-      case 'damaged': return 'border-l-red-500'
-      default: return 'border-l-gray-300'
-    }
-  }
+  const vehicleImageUrl = getImageUrl(vehicle.vehicle_image_path)
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Vehicle Header */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <h1 className="text-2xl font-bold text-military-dark">{vehicle.vehicle_name}</h1>
-        <p className="text-gray-500">{vehicle.license_plate}</p>
-        <p className="text-sm text-military-olive mt-1">สังกัด: {vehicle.project_affiliation}</p>
-      </div>
+    <div className="max-w-5xl mx-auto px-4 py-6">
 
+      {/* Alert Message */}
       {message.text && (
-        <div className={`mb-4 p-3 rounded-lg border-l-4 ${message.type === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
-          {message.text}
+        <div className={`mb-4 p-3 rounded-lg border-l-4 flex justify-between items-center ${
+          message.type === 'error'
+            ? 'bg-red-50 border-red-500 text-red-700'
+            : 'bg-green-50 border-green-500 text-green-700'
+        }`}>
+          <span>{message.text}</span>
+          <button onClick={() => setMessage({ type: '', text: '' })}><X className="w-4 h-4" /></button>
         </div>
       )}
 
-      {/* Add Part Button */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-military-dark">รายการอะไหล่</h2>
-        <button
-          onClick={() => setShowAddPart(!showAddPart)}
-          className="flex items-center gap-2 bg-military-olive text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-hover transition"
-        >
-          <Plus className="w-4 h-4" /> เพิ่มอะไหล่
-        </button>
+      {/* Vehicle Card */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-5">
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Vehicle Image */}
+          <div className="md:w-1/3">
+            {vehicleImageUrl ? (
+              <img
+                src={vehicleImageUrl}
+                alt={vehicle.vehicle_name}
+                className="w-full rounded-lg shadow-sm object-cover aspect-video"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            ) : (
+              <div className="w-full aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                <ImageIcon className="w-12 h-12 text-gray-300" />
+              </div>
+            )}
+          </div>
+
+          {/* Vehicle Info + Add Part Form */}
+          <div className="md:w-2/3">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-military-olive mb-2"
+            >
+              <ChevronLeft className="w-4 h-4" /> กลับ Dashboard
+            </button>
+            <h2 className="text-2xl font-bold text-military-dark">{vehicle.vehicle_name}</h2>
+            <p className="text-gray-500 mb-1">{vehicle.license_plate}</p>
+            <hr className="my-3" />
+
+            {/* Add Part Form */}
+            <form onSubmit={handleAddPart} className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[160px]">
+                <label className="block text-sm font-semibold text-military-dark mb-1">เพิ่มอะไหล่</label>
+                <select
+                  value={selectedPartId}
+                  onChange={(e) => setSelectedPartId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                  required
+                >
+                  <option value="">-- เลือกอะไหล่ --</option>
+                  {allParts.map((p) => (
+                    <option key={p.id} value={p.id}>{p.part_name_th}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-[150px]">
+                <label className="block text-sm font-semibold text-military-dark mb-1">วันที่ติดตั้ง</label>
+                <input
+                  type="date"
+                  value={installDate}
+                  onChange={(e) => setInstallDate(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition"
+              >
+                เพิ่ม
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
 
-      {/* Add Part Form */}
-      {showAddPart && (
-        <form onSubmit={handleAddPart} className="bg-white rounded-xl shadow-sm p-6 mb-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-military-dark mb-1">เลือกอะไหล่</label>
-              <select
-                value={selectedPartId}
-                onChange={(e) => setSelectedPartId(e.target.value)}
-                className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/30 outline-none"
-                required
-              >
-                <option value="">-- เลือก --</option>
-                {allParts.map((p) => (
-                  <option key={p.id} value={p.id}>{p.part_name_th}</option>
-                ))}
-              </select>
+      {/* General Report Box */}
+      <div className="bg-white rounded-xl shadow-sm mb-5 overflow-hidden">
+        <div className="bg-red-600 text-white px-5 py-3 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5" />
+          <h5 className="font-semibold">แจ้งซ่อมยานพาหนะ (แบบเลือกอะไหล่)</h5>
+        </div>
+        <div className="p-5">
+          {vehicleParts.length === 0 ? (
+            <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3 text-sm">
+              คุณต้อง "เพิ่มอะไหล่" เข้าไปในรถคันนี้ก่อน จึงจะสามารถแจ้งซ่อมได้
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-military-dark mb-1">วันที่ติดตั้ง</label>
-              <input
-                type="date"
-                value={installDate}
-                onChange={(e) => setInstallDate(e.target.value)}
-                className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/30 outline-none"
-                required
-              />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button type="submit" className="bg-success text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-hover transition">
-              บันทึก
-            </button>
-            <button type="button" onClick={() => setShowAddPart(false)} className="px-6 py-2 rounded-lg border hover:bg-gray-50">
-              ยกเลิก
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Parts List */}
-      <div className="space-y-4">
-        {vehicleParts.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center text-gray-500">
-            ยังไม่มีอะไหล่
-          </div>
-        ) : (
-          vehicleParts.map((vp) => (
-            <div
-              key={vp.id}
-              className={`bg-white rounded-lg shadow-sm border-l-4 ${getStatusBorderColor(vp.status)} p-4 hover:shadow-md transition`}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border">
-                  {vp.part?.part_image_path ? (
-                    <img src={vp.part.part_image_path} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="w-8 h-8 text-gray-400" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-military-dark">{vp.part?.part_name_th}</h3>
-                  <p className="text-sm text-gray-500">
-                    ติดตั้ง: {new Date(vp.install_date).toLocaleDateString('th-TH')}
-                  </p>
-                  <StatusBadge status={vp.status as any} />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowReportForm(showReportForm === vp.id ? null : vp.id)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100"
+          ) : (
+            <form onSubmit={handleGeneralReport} className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-military-dark mb-1">1. เลือกอะไหล่ที่เสียหาย</label>
+                  <select
+                    value={generalPartId}
+                    onChange={(e) => setGeneralPartId(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                    required
                   >
-                    <AlertTriangle className="w-3 h-3" /> แจ้งซ่อม
-                  </button>
-                  <button
-                    onClick={() => handleDeletePart(vp.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-500"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <option value="">-- กรุณาเลือกอะไหล่ --</option>
+                    {vehicleParts.map((vp) => (
+                      <option key={vp.id} value={vp.id}>{vp.part?.part_name_th}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-
-              {/* Report Form */}
-              {showReportForm === vp.id && (
-                <div className="mt-4 pt-4 border-t space-y-3">
-                  <textarea
-                    value={reportDetails}
-                    onChange={(e) => setReportDetails(e.target.value)}
-                    placeholder="อธิบายปัญหาที่พบ..."
-                    className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/30 outline-none"
-                    rows={3}
+                <div>
+                  <label className="block text-sm font-semibold text-military-dark mb-1">2. กรอกรายละเอียดปัญหา</label>
+                  <input
+                    type="text"
+                    value={generalDetails}
+                    onChange={(e) => setGeneralDetails(e.target.value)}
+                    placeholder="เช่น: ยางแบน, แบตเสื่อม, สตาร์ทไม่ติด"
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 outline-none"
                     required
                   />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={isUrgent}
-                      onChange={(e) => setIsUrgent(e.target.checked)}
-                      className="rounded"
-                    />
-                    เร่งด่วน
-                  </label>
-                  <button
-                    onClick={() => handleReport(vp.id)}
-                    className="bg-danger-red text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition"
-                  >
-                    ส่งแจ้งซ่อม
-                  </button>
                 </div>
-              )}
-            </div>
-          ))
-        )}
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={generalUrgent}
+                    onChange={(e) => setGeneralUrgent(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-red-600 font-semibold flex items-center gap-1">
+                    <AlertTriangle className="w-4 h-4" /> แจ้งเป็นกรณีเร่งด่วน
+                  </span>
+                </label>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-red-600 text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 transition flex items-center justify-center gap-2"
+              >
+                ส่งคำร้องแจ้งซ่อม
+              </button>
+            </form>
+          )}
+        </div>
       </div>
+
+      {/* Parts List */}
+      <h3 className="text-lg font-bold text-military-dark mb-3">
+        รายการอะไหล่ที่ติดตั้งในรถคันนี้ (แจ้งซ่อมรายชิ้น)
+      </h3>
+
+      {vehicleParts.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center text-gray-500">
+          ยังไม่มีการเพิ่มอะไหล่สำหรับรถคันนี้
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {vehicleParts.map((vp) => {
+            const partImageUrl = getImageUrl(vp.part?.part_image_path)
+            return (
+              <div key={vp.id} className="bg-white rounded-lg shadow-sm p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  {/* Part Info */}
+                  <div className="flex items-center gap-3 md:w-1/2">
+                    <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border flex-shrink-0">
+                      {partImageUrl ? (
+                        <img
+                          src={partImageUrl}
+                          alt={vp.part?.part_name_th}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).src = `https://placehold.co/100x100/e9ecef/adb5bd?text=${encodeURIComponent(vp.part?.part_name_th || '')}` }}
+                        />
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                      )}
+                    </div>
+                    <div>
+                      <h5 className="font-semibold text-military-dark">{vp.part?.part_name_th}</h5>
+                      <p className="text-xs text-gray-500 mb-1">
+                        ติดตั้งเมื่อ: {new Date(vp.install_date).toLocaleDateString('th-TH')}
+                      </p>
+                      <StatusBadge status={vp.status as any} />
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="md:w-1/2 flex flex-col gap-2 justify-center">
+                    {/* Quick Report Input */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={reportDetails[vp.id] || ''}
+                        onChange={(e) => setReportDetails(prev => ({ ...prev, [vp.id]: e.target.value }))}
+                        placeholder="แจ้งปัญหา (เช่น: ยางแบน, แบตเสื่อม)"
+                        className="flex-1 px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                      />
+                      <button
+                        onClick={() => handleReport(vp.id)}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition whitespace-nowrap"
+                      >
+                        แจ้งปัญหา
+                      </button>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isUrgent[vp.id] || false}
+                        onChange={(e) => setIsUrgent(prev => ({ ...prev, [vp.id]: e.target.checked }))}
+                        className="rounded"
+                      />
+                      <span className="text-red-600 font-semibold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> แจ้งเป็นกรณีเร่งด่วน
+                      </span>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setGuideModal(vp)}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg text-sm hover:bg-blue-50 transition"
+                      >
+                        <BookOpen className="w-4 h-4" /> ดูวิธีบำรุงรักษาเบื้องต้น
+                      </button>
+                      <button
+                        onClick={() => handleDeletePart(vp.id, vp.part?.part_name_th || '')}
+                        className="flex items-center justify-center gap-1 px-3 py-1.5 border border-red-300 text-red-500 rounded-lg text-sm hover:bg-red-50 transition"
+                      >
+                        <Trash2 className="w-4 h-4" /> ลบอะไหล่นี้ออกจากรถ
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Maintenance Guide Modal */}
+      {guideModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setGuideModal(null)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-4">
+              <h5 className="font-bold text-military-dark">วิธีบำรุงรักษา: {guideModal.part?.part_name_th}</h5>
+              <button onClick={() => setGuideModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="text-sm text-gray-700 whitespace-pre-line max-h-80 overflow-y-auto">
+              {(guideModal.part as any)?.part_text_th || 'ไม่มีข้อมูลการบำรุงรักษา'}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

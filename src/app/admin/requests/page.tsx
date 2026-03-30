@@ -59,13 +59,22 @@ export default function AdminRequestsPage() {
 
       {/* Filter */}
       <div className="flex gap-2 mb-4 flex-wrap">
-        {['all', 'pending', 'in_progress', 'repairing', 'awaiting_approval', 'completed', 'rejected'].map(s => (
+        {[
+          { value: 'all', label: 'ทั้งหมด' },
+          { value: 'pending', label: 'รอดำเนินการ' },
+          { value: 'in_progress', label: 'กำลังดำเนินการ' },
+          { value: 'repairing', label: 'กำลังซ่อม' },
+          { value: 'requisitioning', label: 'รอเบิกอะไหล่' },
+          { value: 'awaiting_approval', label: 'รออนุมัติ' },
+          { value: 'completed', label: 'เสร็จสิ้น' },
+          { value: 'rejected', label: 'ปฏิเสธ' },
+        ].map(({ value, label }) => (
           <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${filterStatus === s ? 'bg-military-olive text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
+            key={value}
+            onClick={() => setFilterStatus(value)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${filterStatus === value ? 'bg-military-olive text-white' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
           >
-            {s === 'all' ? 'ทั้งหมด' : s}
+            {label}
           </button>
         ))}
       </div>

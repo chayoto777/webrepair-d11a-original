@@ -63,7 +63,7 @@ export default function AdminLogbookPage() {
                       <td className="px-4 py-3 text-sm">{log.completed_at ? new Date(log.completed_at).toLocaleDateString('th-TH') : '-'}</td>
                       <td className="px-4 py-3 text-sm">{log.vehicle_part?.vehicle?.vehicle_name || '-'}</td>
                       <td className="px-4 py-3 text-sm">{log.vehicle_part?.part?.part_name_th || '-'}</td>
-                      <td className="px-4 py-3 text-sm max-w-xs truncate">{log.description || '-'}</td>
+                      <td className="px-4 py-3 text-sm max-w-xs truncate">{log.report_details || '-'}</td>
                       <td className="px-4 py-3 text-sm">{log.reporter?.full_name || '-'}</td>
                       <td className="px-4 py-3 text-sm">{log.assignee?.full_name || '-'}</td>
                       <td className="px-4 py-3"><StatusBadge status={log.status} /></td>

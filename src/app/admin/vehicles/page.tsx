@@ -1,8 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Pencil, Car } from 'lucide-react'
+import { Plus, Pencil, Car, Upload, X } from 'lucide-react'
+
+function getImageUrl(path: string | null | undefined) {
+  if (!path) return null
+  if (path.startsWith('http')) return path
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/uploads/${path}`
+}
 
 export default function AdminVehiclesPage() {
   const [vehicles, setVehicles] = useState<any[]>([])
@@ -12,7 +18,11 @@ export default function AdminVehiclesPage() {
   const [name, setName] = useState('')
   const [plate, setPlate] = useState('')
   const [affiliation, setAffiliation] = useState('โครงการวิจัยและพัฒนาจรวดหลายลำกล้องนำวิถี (D11A)')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -23,20 +33,41 @@ export default function AdminVehiclesPage() {
     setLoading(false)
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    setUploading(true)
     const supabase = createClient()
 
+    let imagePath: string | undefined
+    if (imageFile) {
+      const ext = imageFile.name.split('.').pop()
+      const fileName = `vehicles/vehicle_${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('uploads').upload(fileName, imageFile, { upsert: true })
+      if (upErr) { setMessage({ type: 'error', text: 'อัปโหลดรูปไม่สำเร็จ: ' + upErr.message }); setUploading(false); return }
+      imagePath = fileName
+    }
+
+    const payload: any = { vehicle_name: name, license_plate: plate, project_affiliation: affiliation }
+    if (imagePath) payload.vehicle_image_path = imagePath
+
     if (editId) {
-      const { error } = await supabase.from('vehicles').update({ vehicle_name: name, license_plate: plate, project_affiliation: affiliation }).eq('id', editId)
-      if (error) { setMessage({ type: 'error', text: error.message }); return }
+      const { error } = await supabase.from('vehicles').update(payload).eq('id', editId)
+      if (error) { setMessage({ type: 'error', text: error.message }); setUploading(false); return }
       setMessage({ type: 'success', text: 'อัปเดตสำเร็จ' })
     } else {
-      const { error } = await supabase.from('vehicles').insert({ vehicle_name: name, license_plate: plate, project_affiliation: affiliation })
-      if (error) { setMessage({ type: 'error', text: error.message }); return }
+      const { error } = await supabase.from('vehicles').insert(payload)
+      if (error) { setMessage({ type: 'error', text: error.message }); setUploading(false); return }
       setMessage({ type: 'success', text: 'เพิ่มยานพาหนะสำเร็จ' })
     }
 
+    setUploading(false)
     resetForm()
     loadData()
   }
@@ -44,8 +75,10 @@ export default function AdminVehiclesPage() {
   function startEdit(v: any) {
     setEditId(v.id)
     setName(v.vehicle_name)
-    setPlate(v.license_plate)
+    setPlate(v.license_plate || '')
     setAffiliation(v.project_affiliation || '')
+    setImageFile(null)
+    setImagePreview(getImageUrl(v.vehicle_image_path))
     setShowForm(true)
   }
 
@@ -53,7 +86,11 @@ export default function AdminVehiclesPage() {
     setEditId(null)
     setName('')
     setPlate('')
+    setAffiliation('โครงการวิจัยและพัฒนาจรวดหลายลำกล้องนำวิถี (D11A)')
+    setImageFile(null)
+    setImagePreview(null)
     setShowForm(false)
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   return (
@@ -79,36 +116,67 @@ export default function AdminVehiclesPage() {
           <h3 className="font-semibold text-military-dark">{editId ? 'แก้ไขยานพาหนะ' : 'เพิ่มยานพาหนะใหม่'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <input value={name} onChange={e => setName(e.target.value)} placeholder="ชื่อยานพาหนะ" className="px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-primary/30" required />
-            <input value={plate} onChange={e => setPlate(e.target.value)} placeholder="ทะเบียน" className="px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-primary/30" required />
+            <input value={plate} onChange={e => setPlate(e.target.value)} placeholder="ทะเบียน" className="px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-primary/30" />
             <input value={affiliation} onChange={e => setAffiliation(e.target.value)} placeholder="สังกัดโครงการ" className="px-4 py-2.5 border rounded-lg outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
+
+          {/* Image upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">รูปยานพาหนะ</label>
+            <div
+              className="border-2 border-dashed rounded-lg p-4 flex flex-col items-center gap-2 cursor-pointer hover:border-military-olive transition"
+              onClick={() => fileRef.current?.click()}
+            >
+              {imagePreview ? (
+                <div className="relative">
+                  <img src={imagePreview} alt="" className="h-32 object-contain rounded" />
+                  <button type="button" onClick={e => { e.stopPropagation(); setImageFile(null); setImagePreview(null); if (fileRef.current) fileRef.current.value = '' }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-8 h-8 text-gray-400" />
+                  <span className="text-sm text-gray-500">คลิกเพื่ออัปโหลดรูป</span>
+                </>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </div>
+
           <div className="flex gap-2">
-            <button type="submit" className="bg-military-olive text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-hover transition">บันทึก</button>
+            <button type="submit" disabled={uploading} className="bg-military-olive text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-hover transition disabled:opacity-50">
+              {uploading ? 'กำลังบันทึก...' : 'บันทึก'}
+            </button>
             <button type="button" onClick={resetForm} className="px-6 py-2 rounded-lg border hover:bg-gray-50">ยกเลิก</button>
           </div>
         </form>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {vehicles.map(v => (
-          <div key={v.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition">
-            <div className="h-40 bg-gray-100 flex items-center justify-center">
-              {v.vehicle_image_path ? (
-                <img src={v.vehicle_image_path} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <Car className="w-12 h-12 text-gray-400" />
-              )}
+        {loading ? (
+          <div className="col-span-3 flex justify-center py-12"><div className="animate-spin w-8 h-8 border-4 border-military-olive border-t-transparent rounded-full" /></div>
+        ) : (
+          vehicles.map(v => (
+            <div key={v.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition">
+              <div className="h-40 bg-gray-100 flex items-center justify-center">
+                {getImageUrl(v.vehicle_image_path) ? (
+                  <img src={getImageUrl(v.vehicle_image_path)!} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <Car className="w-12 h-12 text-gray-400" />
+                )}
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold text-military-dark">{v.vehicle_name}</h3>
+                <p className="text-sm text-gray-500">{v.license_plate}</p>
+                <p className="text-xs text-military-olive mt-1">{v.project_affiliation}</p>
+                <button onClick={() => startEdit(v)} className="mt-3 flex items-center gap-1 text-sm text-military-olive hover:underline">
+                  <Pencil className="w-3 h-3" /> แก้ไข
+                </button>
+              </div>
             </div>
-            <div className="p-4">
-              <h3 className="font-semibold text-military-dark">{v.vehicle_name}</h3>
-              <p className="text-sm text-gray-500">{v.license_plate}</p>
-              <p className="text-xs text-military-olive mt-1">{v.project_affiliation}</p>
-              <button onClick={() => startEdit(v)} className="mt-3 flex items-center gap-1 text-sm text-military-olive hover:underline">
-                <Pencil className="w-3 h-3" /> แก้ไข
-              </button>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   )
