@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User, UserRole } from '@/types/database'
-import { Trash2, Shield, Users as UsersIcon, Wrench } from 'lucide-react'
+import { Trash2, Shield, Users as UsersIcon, Wrench, CheckCircle, XCircle } from 'lucide-react'
 
 const roleIcons: Record<UserRole, any> = { admin: Shield, user: UsersIcon, mechanic: Wrench }
 const roleColors: Record<UserRole, string> = { admin: 'bg-red-100 text-red-700', user: 'bg-blue-100 text-blue-700', mechanic: 'bg-yellow-100 text-yellow-700' }
@@ -45,6 +45,7 @@ export default function AdminUsersPage() {
             <th className="px-4 py-3 text-left text-sm">ชื่อ</th>
             <th className="px-4 py-3 text-left text-sm">อีเมล</th>
             <th className="px-4 py-3 text-left text-sm">สังกัด</th>
+            <th className="px-4 py-3 text-left text-sm">ยืนยันอีเมล</th>
             <th className="px-4 py-3 text-left text-sm">บทบาท</th>
             <th className="px-4 py-3 text-left text-sm">จัดการ</th>
           </tr></thead>
@@ -56,6 +57,17 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 text-sm font-medium">{u.full_name || u.username}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{u.email}</td>
                   <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{u.affiliation || '-'}</td>
+                  <td className="px-4 py-3">
+                    {u.is_verified ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full font-medium">
+                        <CheckCircle className="w-3 h-3" /> ยืนยันแล้ว
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-100 px-2 py-1 rounded-full font-medium">
+                        <XCircle className="w-3 h-3" /> ยังไม่ยืนยัน
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <select
                       value={u.role}
