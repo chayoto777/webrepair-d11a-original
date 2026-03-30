@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { Calendar, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import CalendarWidget from '@/components/CalendarWidget'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -11,12 +12,6 @@ export default async function HomePage() {
     .select('*, author:users(full_name)')
     .order('created_at', { ascending: false })
     .limit(6)
-
-  // Fetch maintenance events for calendar
-  const { data: events } = await supabase
-    .from('maintenance_requests')
-    .select('request_date, status')
-    .gte('request_date', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
 
   return (
     <div>
@@ -92,28 +87,7 @@ export default async function HomePage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Calendar Card */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="bg-military-dark text-white px-4 py-3 font-semibold flex items-center gap-2">
-                <Calendar className="w-4 h-4" /> ปฏิทินกิจกรรม
-              </div>
-              <div className="p-4">
-                <div className="text-center text-gray-500 text-sm py-4">
-                  {new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })}
-                </div>
-                {/* Calendar Legend */}
-                <div className="flex justify-around text-xs mt-2 pt-2 border-t">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-danger-red" /> รอดำเนินการ
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-yellow-400" /> กำลังซ่อม
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-military-olive" /> เสร็จสิ้น
-                  </span>
-                </div>
-              </div>
-            </div>
+            <CalendarWidget />
 
             {/* Quick Links */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
