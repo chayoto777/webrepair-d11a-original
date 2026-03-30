@@ -11,12 +11,18 @@ export default async function DashboardPage() {
 
   const supabase = await createClient()
 
-  // Fetch single vehicle for this project
+  // Fetch vehicle (project has only one)
   const { data: vehicle } = await supabase
     .from('vehicles')
     .select('*')
-    .eq('project_affiliation', user.affiliation)
+    .order('id')
     .maybeSingle()
+
+  function getImageUrl(path: string | null | undefined) {
+    if (!path) return null
+    if (path.startsWith('http')) return path
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/uploads/${path}`
+  }
 
   // Fetch maintenance requests for user's vehicle
   const { data: requests } = await supabase
@@ -42,10 +48,10 @@ export default async function DashboardPage() {
       <div className="flex justify-center mb-8">
         {vehicle ? (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden max-w-2xl w-full hover:shadow-md transition">
-            {vehicle.vehicle_image_path ? (
+            {getImageUrl(vehicle.vehicle_image_path) ? (
               <div
                 className="h-60 bg-cover bg-center"
-                style={{ backgroundImage: `url(${vehicle.vehicle_image_path})` }}
+                style={{ backgroundImage: `url(${getImageUrl(vehicle.vehicle_image_path)})` }}
               />
             ) : (
               <div className="h-60 bg-gray-100 flex items-center justify-center text-gray-400">
