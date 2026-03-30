@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 
 type EventType = 'maintenance' | 'general' | 'completed'
 
@@ -96,7 +96,7 @@ export default function CalendarWidget() {
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       <div className="bg-military-dark text-white px-4 py-3 font-semibold flex items-center gap-2">
-        <Calendar className="w-4 h-4" /> ปฏิทินกิจกรรม
+        <CalendarIcon className="w-4 h-4" /> ปฏิทินกิจกรรม
       </div>
       <div className="p-3">
         {/* Month nav */}

@@ -24,11 +24,33 @@ export default function AdminRequisitionsPage() {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    // Get requisition details first
+    const { data: req } = await supabase
+      .from('part_requisitions')
+      .select('part_id, quantity_requested')
+      .eq('id', id)
+      .single()
+
     await supabase.from('part_requisitions').update({
       status: 'approved',
       approved_by_user_id: user.id,
       updated_at: new Date().toISOString(),
     }).eq('id', id)
+
+    // Decrease parts quantity
+    if (req) {
+      const { data: part } = await supabase
+        .from('parts')
+        .select('quantity')
+        .eq('id', req.part_id)
+        .single()
+      if (part) {
+        const newQty = Math.max(0, part.quantity - req.quantity_requested)
+        await supabase.from('parts').update({ quantity: newQty }).eq('id', req.part_id)
+      }
+    }
+
     loadData()
   }
 

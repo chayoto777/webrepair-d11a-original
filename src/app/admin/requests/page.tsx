@@ -10,6 +10,8 @@ export default function AdminRequestsPage() {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
   const [mechanics, setMechanics] = useState<any[]>([])
+  const [editingNotes, setEditingNotes] = useState<Record<string, string>>({})
+  const [savingNote, setSavingNote] = useState<string | null>(null)
 
   useEffect(() => { loadData() }, [])
 
@@ -40,6 +42,14 @@ export default function AdminRequestsPage() {
       assigned_to_user_id: mechanicId,
       status: 'in_progress',
     }).eq('id', id)
+    loadData()
+  }
+
+  async function saveNote(id: string) {
+    setSavingNote(id)
+    const supabase = createClient()
+    await supabase.from('maintenance_requests').update({ admin_notes: editingNotes[id] ?? '' }).eq('id', id)
+    setSavingNote(null)
     loadData()
   }
 
@@ -93,12 +103,13 @@ export default function AdminRequestsPage() {
                   <th className="px-4 py-3 text-left text-sm">อะไหล่</th>
                   <th className="px-4 py-3 text-left text-sm">สถานะ</th>
                   <th className="px-4 py-3 text-left text-sm">มอบหมาย</th>
+                  <th className="px-4 py-3 text-left text-sm">โน้ตแอดมิน</th>
                   <th className="px-4 py-3 text-left text-sm">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">ไม่มีคำร้อง</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">ไม่มีคำร้อง</td></tr>
                 ) : (
                   filtered.map((req) => (
                     <tr key={req.id} className="hover:bg-gray-50">
@@ -119,6 +130,24 @@ export default function AdminRequestsPage() {
                           </select>
                         )}
                         {req.assignee && <span className="text-xs text-gray-500">{req.assignee.full_name}</span>}
+                      </td>
+                      <td className="px-4 py-3 min-w-[180px]">
+                        <div className="flex gap-1 items-center">
+                          <textarea
+                            rows={2}
+                            value={editingNotes[req.id] ?? (req.admin_notes || '')}
+                            onChange={(e) => setEditingNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
+                            placeholder="เพิ่มโน้ต..."
+                            className="flex-1 text-xs border rounded px-2 py-1 resize-none focus:ring-1 focus:ring-primary/40 outline-none"
+                          />
+                          <button
+                            onClick={() => saveNote(req.id)}
+                            disabled={savingNote === req.id}
+                            className="text-xs bg-military-olive text-white px-2 py-1 rounded hover:bg-primary transition disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {savingNote === req.id ? '...' : 'บันทึก'}
+                          </button>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">

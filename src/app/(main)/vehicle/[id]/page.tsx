@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import StatusBadge from '@/components/StatusBadge'
 import type { VehiclePart } from '@/types/database'
-import { AlertTriangle, Trash2, Image as ImageIcon, X, BookOpen, ChevronLeft } from 'lucide-react'
+import { AlertTriangle, Trash2, Image as ImageIcon, X, BookOpen, ChevronLeft, CheckCircle2 } from 'lucide-react'
 
 interface Vehicle {
   id: string
@@ -27,6 +27,7 @@ export default function VehiclePage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [guideModal, setGuideModal] = useState<VehiclePart | null>(null)
+  const [successModal, setSuccessModal] = useState<{ text: string; urgent: boolean } | null>(null)
 
   // General report form (top)
   const [generalPartId, setGeneralPartId] = useState('')
@@ -60,6 +61,23 @@ export default function VehiclePage() {
       .select('*, part:parts(*)')
       .eq('vehicle_id', id)
       .order('install_date', { ascending: false })
+
+    // Auto-update status based on install_date + lifespan
+    const today = new Date()
+    for (const vpart of vp || []) {
+      if (!vpart.install_date || !vpart.part?.standard_lifespan_days) continue
+      const installDate = new Date(vpart.install_date)
+      const lifespan = vpart.part.standard_lifespan_days
+      const daysSince = Math.floor((today.getTime() - installDate.getTime()) / (1000 * 60 * 60 * 24))
+      let newStatus = 'good'
+      if (daysSince >= lifespan) newStatus = 'expired'
+      else if (daysSince >= lifespan * 0.8) newStatus = 'warning'
+      if (newStatus !== vpart.status) {
+        await supabase.from('vehicle_parts').update({ status: newStatus }).eq('id', vpart.id)
+        vpart.status = newStatus
+      }
+    }
+
     setVehicleParts(vp || [])
 
     const { data: parts } = await supabase
@@ -105,7 +123,7 @@ export default function VehiclePage() {
     if (error) {
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาด: ' + error.message })
     } else {
-      setMessage({ type: 'success', text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย' + ((isUrgent[vehiclePartId]) ? ' (เร่งด่วน)' : '') })
+      setSuccessModal({ text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย', urgent: isUrgent[vehiclePartId] || false })
       setShowReportForm(null)
       setReportDetails(prev => ({ ...prev, [vehiclePartId]: '' }))
       setIsUrgent(prev => ({ ...prev, [vehiclePartId]: false }))
@@ -127,7 +145,7 @@ export default function VehiclePage() {
     if (error) {
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาด: ' + error.message })
     } else {
-      setMessage({ type: 'success', text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย' + (generalUrgent ? ' (เร่งด่วน)' : '') })
+      setSuccessModal({ text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย', urgent: generalUrgent })
       setGeneralPartId('')
       setGeneralDetails('')
       setGeneralUrgent(false)
@@ -349,7 +367,18 @@ export default function VehiclePage() {
                       <p className="text-xs text-gray-500 mb-1">
                         ติดตั้งเมื่อ: {new Date(vp.install_date).toLocaleDateString('th-TH')}
                       </p>
-                      <StatusBadge status={vp.status as any} />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <StatusBadge status={vp.status as any} />
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          (vp.part as any)?.quantity === 0
+                            ? 'bg-red-100 text-red-700'
+                            : (vp.part as any)?.quantity <= 3
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          คงเหลือ: {(vp.part as any)?.quantity ?? '-'} ชิ้น
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -401,6 +430,33 @@ export default function VehiclePage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Success Report Modal */}
+      {successModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSuccessModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="w-9 h-9 text-green-600" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-military-dark mb-2">แจ้งปัญหาเรียบร้อย!</h3>
+            <p className="text-gray-500 text-sm mb-1">ระบบได้รับคำร้องแจ้งซ่อมของคุณแล้ว</p>
+            {successModal.urgent && (
+              <p className="text-red-600 text-sm font-semibold flex items-center justify-center gap-1 mt-1">
+                <AlertTriangle className="w-4 h-4" /> ถูกส่งเป็นกรณีเร่งด่วน
+              </p>
+            )}
+            <p className="text-gray-400 text-xs mt-3 mb-6">ช่างจะดำเนินการตรวจสอบโดยเร็วที่สุด</p>
+            <button
+              onClick={() => setSuccessModal(null)}
+              className="w-full bg-military-olive text-white py-2.5 rounded-lg font-semibold hover:bg-primary transition"
+            >
+              รับทราบ
+            </button>
+          </div>
         </div>
       )}
 
