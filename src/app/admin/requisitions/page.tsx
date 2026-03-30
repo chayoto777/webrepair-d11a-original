@@ -14,7 +14,7 @@ export default function AdminRequisitionsPage() {
     const supabase = createClient()
     const { data } = await supabase
       .from('part_requisitions')
-      .select('*, part:parts(part_name_th, part_id), requester:users!requested_by(full_name, username), request:maintenance_requests(id, description)')
+      .select('*, part:parts(part_name_th, part_id), requester:users!requested_by_user_id(full_name, username), request:maintenance_requests(id, report_details)')
       .order('created_at', { ascending: false })
     setRequisitions(data || [])
     setLoading(false)
@@ -26,8 +26,8 @@ export default function AdminRequisitionsPage() {
     if (!user) return
     await supabase.from('part_requisitions').update({
       status: 'approved',
-      approved_by: user.id,
-      approved_at: new Date().toISOString(),
+      approved_by_user_id: user.id,
+      updated_at: new Date().toISOString(),
     }).eq('id', id)
     loadData()
   }
@@ -38,8 +38,8 @@ export default function AdminRequisitionsPage() {
     if (!user) return
     await supabase.from('part_requisitions').update({
       status: 'rejected',
-      approved_by: user.id,
-      approved_at: new Date().toISOString(),
+      approved_by_user_id: user.id,
+      updated_at: new Date().toISOString(),
     }).eq('id', id)
     loadData()
   }
