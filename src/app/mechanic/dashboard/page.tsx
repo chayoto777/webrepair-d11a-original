@@ -85,7 +85,7 @@ export default function MechanicDashboardPage() {
                         <button onClick={() => updateStatus(job.id, 'awaiting_approval')} className="text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded hover:bg-green-200 font-medium">ซ่อมเสร็จแล้ว</button>
                       )}
                       {job.status === 'requisitioning' && (
-                        <span className="text-xs text-yellow-600 font-medium">รอการอนุมัติเบิกอะไหล่</span>
+                        <button onClick={() => updateStatus(job.id, 'repairing')} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 font-medium">อะไหล่มาแล้ว → ซ่อมต่อ</button>
                       )}
                     </div>
                   </div>

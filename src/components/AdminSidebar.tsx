@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Wrench, FileText, Users, Car, Package,
   ClipboardCheck, History, Newspaper, MessageSquare, ExternalLink, LogOut
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
   { href: '/admin/dashboard', label: 'ภาพรวม', icon: LayoutDashboard },
@@ -21,6 +22,13 @@ const navItems = [
 
 export default function AdminSidebar({ username }: { username: string }) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <nav className="bg-military-dark text-white w-64 min-h-screen flex flex-col">
@@ -60,12 +68,12 @@ export default function AdminSidebar({ username }: { username: string }) {
         >
           <ExternalLink className="w-4 h-4" /> ดูหน้าเว็บ
         </Link>
-        <Link
-          href="/login"
-          className="flex items-center gap-2 px-4 py-2.5 text-sm text-yellow-400 hover:bg-gray-700 rounded"
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-yellow-400 hover:bg-gray-700 rounded"
         >
           <LogOut className="w-4 h-4" /> ออกจากระบบ
-        </Link>
+        </button>
       </div>
     </nav>
   )

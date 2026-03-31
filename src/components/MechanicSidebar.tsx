@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Wrench, Package, ExternalLink, LogOut } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const navItems = [
   { href: '/mechanic/dashboard', label: 'งานของฉัน', icon: LayoutDashboard },
@@ -11,6 +12,13 @@ const navItems = [
 
 export default function MechanicSidebar({ username }: { username: string }) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <nav className="bg-military-dark text-white w-64 min-h-screen flex flex-col">
@@ -47,9 +55,12 @@ export default function MechanicSidebar({ username }: { username: string }) {
         <Link href="/" className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded">
           <ExternalLink className="w-4 h-4" /> ดูหน้าเว็บ
         </Link>
-        <Link href="/login" className="flex items-center gap-2 px-4 py-2.5 text-sm text-yellow-400 hover:bg-gray-700 rounded">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-yellow-400 hover:bg-gray-700 rounded"
+        >
           <LogOut className="w-4 h-4" /> ออกจากระบบ
-        </Link>
+        </button>
       </div>
     </nav>
   )
