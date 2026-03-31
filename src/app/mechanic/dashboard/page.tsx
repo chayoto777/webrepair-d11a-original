@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import StatusBadge from '@/components/StatusBadge'
 import type { MaintenanceStatus } from '@/types/database'
+import { AlertTriangle } from 'lucide-react'
 
 export default function MechanicDashboardPage() {
+  const supabase = createClient()
   const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
@@ -13,7 +15,6 @@ export default function MechanicDashboardPage() {
   useEffect(() => { init() }, [])
 
   async function init() {
-    const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
@@ -21,7 +22,6 @@ export default function MechanicDashboardPage() {
   }
 
   async function loadJobs(uid: string) {
-    const supabase = createClient()
     const { data } = await supabase
       .from('maintenance_requests')
       .select(`*, reporter:users!reported_by_user_id(full_name), vehicle_part:vehicle_parts(part:parts(part_name_th), vehicle:vehicles(vehicle_name))`)
@@ -33,10 +33,7 @@ export default function MechanicDashboardPage() {
 
   async function updateStatus(id: string, status: MaintenanceStatus) {
     if (!userId) return
-    const supabase = createClient()
-    const updates: any = { status }
-    if (status === 'awaiting_approval') updates.completed_at = new Date().toISOString()
-    await supabase.from('maintenance_requests').update(updates).eq('id', id)
+    await supabase.from('maintenance_requests').update({ status }).eq('id', id)
     loadJobs(userId)
   }
 
@@ -62,14 +59,20 @@ export default function MechanicDashboardPage() {
                 <div key={job.id} className="bg-white rounded-xl shadow-sm p-5">
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold text-military-dark">{job.vehicle_part?.vehicle?.vehicle_name || 'ยานพาหนะ'}</h3>
                         <StatusBadge status={job.status} />
+                        {job.is_urgent && (
+                          <span className="flex items-center gap-1 text-xs text-red-600 font-semibold">
+                            <AlertTriangle className="w-3 h-3" /> เร่งด่วน
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-gray-500">อะไหล่: {job.vehicle_part?.part?.part_name_th || '-'}</p>
                       <p className="text-sm text-gray-500">ผู้แจ้ง: {job.reporter?.full_name || '-'}</p>
                       <p className="text-sm text-gray-500">วันที่แจ้ง: {new Date(job.request_date).toLocaleDateString('th-TH')}</p>
-                      {job.description && <p className="text-sm text-gray-600 mt-2">{job.description}</p>}
+                      {job.report_details && <p className="text-sm text-gray-600 mt-2 italic">"{job.report_details}"</p>}
+                      {job.admin_notes && <p className="text-xs text-military-olive mt-1">โน้ตแอดมิน: {job.admin_notes}</p>}
                     </div>
                     <div className="flex gap-2">
                       {job.status === 'in_progress' && (
