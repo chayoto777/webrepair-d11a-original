@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import StatusBadge from '@/components/StatusBadge'
 import { Car, Settings, AlertCircle } from 'lucide-react'
+import { getImageUrl } from '@/lib/storage'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -17,12 +18,6 @@ export default async function DashboardPage() {
     .select('*')
     .order('id')
     .maybeSingle()
-
-  function getImageUrl(path: string | null | undefined) {
-    if (!path) return null
-    if (path.startsWith('http')) return path
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/uploads/${path}`
-  }
 
   // Fetch maintenance requests for user's vehicle
   const { data: requests } = await supabase

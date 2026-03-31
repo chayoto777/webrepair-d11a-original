@@ -12,6 +12,7 @@ export type MaintenanceStatus =
   | 'rejected'
 
 export type RequisitionStatus = 'pending' | 'approved' | 'rejected'
+export type VehiclePartStatus = 'good' | 'warning' | 'expired'
 export type GeneralRequestStatus = 'pending' | 'in_progress' | 'completed' | 'rejected'
 
 export interface User {

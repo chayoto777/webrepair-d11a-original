@@ -3,12 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Pencil, Package, Upload, X } from 'lucide-react'
-
-function getImageUrl(path: string | null | undefined) {
-  if (!path) return null
-  if (path.startsWith('http')) return path
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/uploads/${path}`
-}
+import { getImageUrl } from '@/lib/storage'
 
 export default function AdminPartsPage() {
   const [parts, setParts] = useState<any[]>([])

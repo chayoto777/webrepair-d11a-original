@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import StatusBadge from '@/components/StatusBadge'
-import type { VehiclePart } from '@/types/database'
+import type { VehiclePart, VehiclePartStatus } from '@/types/database'
+import { getImageUrl } from '@/lib/storage'
 import { AlertTriangle, Trash2, Image as ImageIcon, X, BookOpen, ChevronLeft, CheckCircle2 } from 'lucide-react'
 
 interface Vehicle {
@@ -21,13 +22,12 @@ export default function VehiclePage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [vehicleParts, setVehicleParts] = useState<VehiclePart[]>([])
   const [allParts, setAllParts] = useState<{ id: string; part_name_th: string }[]>([])
-  const [showReportForm, setShowReportForm] = useState<string | null>(null)
   const [reportDetails, setReportDetails] = useState<{ [key: string]: string }>({})
   const [isUrgent, setIsUrgent] = useState<{ [key: string]: boolean }>({})
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState({ type: '', text: '' })
   const [guideModal, setGuideModal] = useState<VehiclePart | null>(null)
-  const [successModal, setSuccessModal] = useState<{ text: string; urgent: boolean } | null>(null)
+  const [successModal, setSuccessModal] = useState<{ urgent: boolean } | null>(null)
 
   // General report form (top)
   const [generalPartId, setGeneralPartId] = useState('')
@@ -62,21 +62,19 @@ export default function VehiclePage() {
       .eq('vehicle_id', id)
       .order('install_date', { ascending: false })
 
-    // Auto-update status based on install_date + lifespan
     const today = new Date()
+    const statusUpdates: Promise<unknown>[] = []
     for (const vpart of vp || []) {
       if (!vpart.install_date || !vpart.part?.standard_lifespan_days) continue
-      const installDate = new Date(vpart.install_date)
       const lifespan = vpart.part.standard_lifespan_days
-      const daysSince = Math.floor((today.getTime() - installDate.getTime()) / (1000 * 60 * 60 * 24))
-      let newStatus = 'good'
-      if (daysSince >= lifespan) newStatus = 'expired'
-      else if (daysSince >= lifespan * 0.8) newStatus = 'warning'
+      const daysSince = Math.floor((today.getTime() - new Date(vpart.install_date).getTime()) / 86400000)
+      const newStatus: VehiclePartStatus = daysSince >= lifespan ? 'expired' : daysSince >= lifespan * 0.8 ? 'warning' : 'good'
       if (newStatus !== vpart.status) {
-        await supabase.from('vehicle_parts').update({ status: newStatus }).eq('id', vpart.id)
         vpart.status = newStatus
+        statusUpdates.push(supabase.from('vehicle_parts').update({ status: newStatus }).eq('id', vpart.id))
       }
     }
+    if (statusUpdates.length > 0) await Promise.all(statusUpdates)
 
     setVehicleParts(vp || [])
 
@@ -123,8 +121,7 @@ export default function VehiclePage() {
     if (error) {
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาด: ' + error.message })
     } else {
-      setSuccessModal({ text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย', urgent: isUrgent[vehiclePartId] || false })
-      setShowReportForm(null)
+      setSuccessModal({ urgent: isUrgent[vehiclePartId] || false })
       setReportDetails(prev => ({ ...prev, [vehiclePartId]: '' }))
       setIsUrgent(prev => ({ ...prev, [vehiclePartId]: false }))
     }
@@ -145,7 +142,7 @@ export default function VehiclePage() {
     if (error) {
       setMessage({ type: 'error', text: 'เกิดข้อผิดพลาด: ' + error.message })
     } else {
-      setSuccessModal({ text: 'ส่งคำร้องแจ้งซ่อมเรียบร้อย', urgent: generalUrgent })
+      setSuccessModal({ urgent: generalUrgent })
       setGeneralPartId('')
       setGeneralDetails('')
       setGeneralUrgent(false)
@@ -157,12 +154,6 @@ export default function VehiclePage() {
     await supabase.from('vehicle_parts').delete().eq('id', vpId)
     setMessage({ type: 'success', text: 'ลบอะไหล่เรียบร้อย' })
     loadData()
-  }
-
-  function getImageUrl(path: string | null | undefined) {
-    if (!path || path === 'no data') return null
-    if (path.startsWith('http')) return path
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/uploads/${path}`
   }
 
   if (loading) {
@@ -368,15 +359,15 @@ export default function VehiclePage() {
                         ติดตั้งเมื่อ: {new Date(vp.install_date).toLocaleDateString('th-TH')}
                       </p>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <StatusBadge status={vp.status as any} />
+                        <StatusBadge status={vp.status as VehiclePartStatus} />
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          (vp.part as any)?.quantity === 0
+                          vp.part?.quantity === 0
                             ? 'bg-red-100 text-red-700'
-                            : (vp.part as any)?.quantity <= 3
+                            : (vp.part?.quantity ?? 99) <= 3
                             ? 'bg-yellow-100 text-yellow-700'
                             : 'bg-blue-100 text-blue-700'
                         }`}>
-                          คงเหลือ: {(vp.part as any)?.quantity ?? '-'} ชิ้น
+                          คงเหลือ: {vp.part?.quantity ?? '-'} ชิ้น
                         </span>
                       </div>
                     </div>
@@ -471,7 +462,7 @@ export default function VehiclePage() {
               </button>
             </div>
             <div className="text-sm text-gray-700 whitespace-pre-line max-h-80 overflow-y-auto">
-              {(guideModal.part as any)?.part_text_th || 'ไม่มีข้อมูลการบำรุงรักษา'}
+              {guideModal.part?.part_text_th || 'ไม่มีข้อมูลการบำรุงรักษา'}
             </div>
           </div>
         </div>

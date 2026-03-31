@@ -6,6 +6,7 @@ import StatusBadge from '@/components/StatusBadge'
 import type { MaintenanceRequest, MaintenanceStatus } from '@/types/database'
 
 export default function AdminRequestsPage() {
+  const supabase = createClient()
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
@@ -16,7 +17,6 @@ export default function AdminRequestsPage() {
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
-    const supabase = createClient()
     const { data } = await supabase
       .from('maintenance_requests')
       .select(`*, reporter:users!reported_by_user_id(full_name, username), assignee:users!assigned_to_user_id(full_name), vehicle_part:vehicle_parts(part:parts(part_name_th), vehicle:vehicles(vehicle_name))`)
@@ -29,7 +29,6 @@ export default function AdminRequestsPage() {
   }
 
   async function updateStatus(id: string, status: MaintenanceStatus) {
-    const supabase = createClient()
     const updates: any = { status }
     if (status === 'completed') updates.completed_at = new Date().toISOString()
     await supabase.from('maintenance_requests').update(updates).eq('id', id)
@@ -37,25 +36,20 @@ export default function AdminRequestsPage() {
   }
 
   async function assignMechanic(id: string, mechanicId: string) {
-    const supabase = createClient()
-    await supabase.from('maintenance_requests').update({
-      assigned_to_user_id: mechanicId,
-      status: 'in_progress',
-    }).eq('id', id)
+    await supabase.from('maintenance_requests').update({ assigned_to_user_id: mechanicId, status: 'in_progress' }).eq('id', id)
     loadData()
   }
 
   async function saveNote(id: string) {
     setSavingNote(id)
-    const supabase = createClient()
-    await supabase.from('maintenance_requests').update({ admin_notes: editingNotes[id] ?? '' }).eq('id', id)
+    const note = editingNotes[id] ?? ''
+    await supabase.from('maintenance_requests').update({ admin_notes: note }).eq('id', id)
+    setRequests(prev => prev.map(r => r.id === id ? { ...r, admin_notes: note } : r))
     setSavingNote(null)
-    loadData()
   }
 
   async function deleteRequest(id: string) {
     if (!confirm('ต้องการลบคำร้องนี้?')) return
-    const supabase = createClient()
     await supabase.from('maintenance_requests').delete().eq('id', id)
     loadData()
   }
