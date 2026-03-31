@@ -71,7 +71,7 @@ export default function VehiclePage() {
       const newStatus: VehiclePartStatus = daysSince >= lifespan ? 'expired' : daysSince >= lifespan * 0.8 ? 'warning' : 'good'
       if (newStatus !== vpart.status) {
         vpart.status = newStatus
-        statusUpdates.push(supabase.from('vehicle_parts').update({ status: newStatus }).eq('id', vpart.id))
+        statusUpdates.push(supabase.from('vehicle_parts').update({ status: newStatus }).eq('id', vpart.id) as unknown as Promise<unknown>)
       }
     }
     if (statusUpdates.length > 0) await Promise.all(statusUpdates)
