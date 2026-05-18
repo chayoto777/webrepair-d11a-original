@@ -79,7 +79,7 @@ export default function LoginPage() {
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword })
     if (error) { setGlobalError('อีเมล หรือ รหัสผ่านไม่ถูกต้อง'); setLoading(false); return }
-    router.push('/dashboard')
+    window.location.href = '/dashboard'
   }
 
   const handleRegister = async (e: React.FormEvent) => {
