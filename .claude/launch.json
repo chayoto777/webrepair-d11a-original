@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "webrepair-d11a-next",
+      "name": "webrepair-m113",
       "runtimeExecutable": "node",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
       "port": 3000,

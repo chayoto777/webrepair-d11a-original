@@ -1,5 +1,5 @@
 -- ============================================================
--- Supabase Migration: Initial Schema for webrepair-d11a
+-- Supabase Migration: Initial Schema for webrepair-m113
 -- วิธีใช้: Copy SQL นี้ไปวางใน Supabase SQL Editor แล้วกด Run
 -- ============================================================
 
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   full_name TEXT,
   email TEXT NOT NULL,
   phone_number TEXT,
-  affiliation TEXT DEFAULT 'โครงการวิจัยและพัฒนาจรวดหลายลำกล้องนำวิถี (D11A)',
+  affiliation TEXT DEFAULT 'โครงการรถสายพานลำเลียง M113',
   rank TEXT,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'mechanic')),
   is_verified BOOLEAN NOT NULL DEFAULT FALSE,
@@ -34,7 +34,7 @@ BEGIN
     NEW.email,
     NEW.raw_user_meta_data->>'phone_number',
     NEW.raw_user_meta_data->>'rank',
-    COALESCE(NEW.raw_user_meta_data->>'affiliation', 'โครงการวิจัยและพัฒนาจรวดหลายลำกล้องนำวิถี (D11A)')
+    COALESCE(NEW.raw_user_meta_data->>'affiliation', 'โครงการรถสายพานลำเลียง M113')
   );
   RETURN NEW;
 END;
