@@ -23,10 +23,10 @@ export default async function HomePage() {
         />
         <div className="relative max-w-7xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg">
-            ระบบจัดการยานเกราะ D11A
+            ระบบจัดการยานเกราะ M113
           </h1>
           <p className="text-xl text-gray-200 mb-8 drop-shadow">
-            โครงการวิจัยและพัฒนาจรวดหลายลำกล้องนำวิถี
+            โครงการรถสายพานลำเลียง M113
           </p>
           <Link
             href="/dashboard"
