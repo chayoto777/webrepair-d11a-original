@@ -19,8 +19,8 @@ export default function AboutPage() {
         <div className="bg-white rounded-xl shadow-sm p-8 mb-8">
           <h2 className="text-2xl font-bold text-military-dark mb-4">วิสัยทัศน์</h2>
           <p className="text-gray-600 leading-relaxed">
-            ระบบจัดการยานเกราะ M113 พัฒนาขึ้นเพื่อเพิ่มประสิทธิภาพในการบริหารจัดการยานพาหนะ
-            การแจ้งซ่อมบำรุง และการติดตามสถานะอะไหล่ของโครงการรถสายพานลำเลียง M113
+            ระบบจัดการยานเกราะ D11A พัฒนาขึ้นเพื่อเพิ่มประสิทธิภาพในการบริหารจัดการยานพาหนะ
+            การแจ้งซ่อมบำรุง และการติดตามสถานะอะไหล่ของโครงการ D11A
           </p>
         </div>
 

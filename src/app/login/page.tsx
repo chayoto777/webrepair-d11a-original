@@ -99,7 +99,7 @@ export default function LoginPage() {
           username: reg.username,
           rank: reg.rank,
           phone_number: reg.phone,
-          affiliation: 'โครงการรถสายพานลำเลียง M113',
+          affiliation: 'โครงการ D11A',
         },
       },
     })
@@ -115,7 +115,7 @@ export default function LoginPage() {
         {/* Branding Panel */}
         <div className="flex flex-col items-center justify-center bg-primary text-white p-10 flex-1 text-center">
           <Shield className="w-20 h-20 mb-5 opacity-90" />
-          <h2 className="text-2xl font-bold mb-2">โครงการรถสายพานลำเลียง M113</h2>
+          <h2 className="text-2xl font-bold mb-2">โครงการ D11A</h2>
           <p className="text-white/80 leading-relaxed">ระบบสำหรับบุคลากรภายในองค์กร<br />กรุณาเข้าสู่ระบบเพื่อใช้งาน</p>
         </div>
 

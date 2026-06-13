@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'ระบบจัดการยานเกราะ M113',
-  description: 'ระบบแจ้งซ่อมและบริหารจัดการยานพาหนะ โครงการ M113',
+  title: 'ระบบจัดการยานเกราะ D11A',
+  description: 'ระบบแจ้งซ่อมและบริหารจัดการยานพาหนะ โครงการ D11A',
 }
 
 export default function RootLayout({
