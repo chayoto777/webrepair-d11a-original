@@ -27,6 +27,12 @@ export default function AdminUsersPage() {
     loadData()
   }
 
+  async function toggleVerify(id: string, current: boolean) {
+    const supabase = createClient()
+    await supabase.from('users').update({ is_verified: !current }).eq('id', id)
+    loadData()
+  }
+
   async function deleteUser(id: string) {
     if (!confirm('ต้องการลบผู้ใช้นี้?')) return
     const supabase = createClient()
@@ -58,15 +64,13 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 text-sm text-gray-500">{u.email}</td>
                   <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{u.affiliation || '-'}</td>
                   <td className="px-4 py-3">
-                    {u.is_verified ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full font-medium">
-                        <CheckCircle className="w-3 h-3" /> ยืนยันแล้ว
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-100 px-2 py-1 rounded-full font-medium">
-                        <XCircle className="w-3 h-3" /> ยังไม่ยืนยัน
-                      </span>
-                    )}
+                    <button
+                      onClick={() => toggleVerify(u.id, u.is_verified)}
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium transition hover:opacity-80 ${u.is_verified ? 'text-green-700 bg-green-100' : 'text-red-600 bg-red-100'}`}
+                      title={u.is_verified ? 'คลิกเพื่อยกเลิกการยืนยัน' : 'คลิกเพื่อยืนยันผู้ใช้'}
+                    >
+                      {u.is_verified ? <><CheckCircle className="w-3 h-3" /> ยืนยันแล้ว</> : <><XCircle className="w-3 h-3" /> ยังไม่ยืนยัน</>}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <select
