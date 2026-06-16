@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowRight } from 'lucide-react'
 import CalendarWidget from '@/components/CalendarWidget'
+import { getImageUrl } from '@/lib/storage'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -55,8 +56,8 @@ export default async function HomePage() {
                     className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition hover:-translate-y-0.5 animate-fade-in"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    {post.featured_image_path ? (
-                      <div className="h-48 bg-cover bg-center" style={{ backgroundImage: `url(${post.featured_image_path})` }} />
+                    {getImageUrl(post.featured_image_path) ? (
+                      <div className="h-48 bg-cover bg-center" style={{ backgroundImage: `url(${getImageUrl(post.featured_image_path)})` }} />
                     ) : (
                       <div className="h-48 bg-gray-100 flex items-center justify-center text-gray-400">
                         ไม่มีรูปภาพ
