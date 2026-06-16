@@ -17,6 +17,7 @@ export default async function DashboardPage() {
     .from('vehicles')
     .select('*')
     .order('id')
+    .limit(1)
     .maybeSingle()
 
   // Fetch maintenance requests for user's vehicle
