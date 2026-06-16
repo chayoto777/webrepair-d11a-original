@@ -18,7 +18,7 @@ export default async function HomePage() {
       {/* Hero Banner */}
       <section className="relative bg-military-dark text-white py-20 px-4">
         <div
-          className="absolute inset-0 bg-cover bg-center opacity-50"
+          className="absolute inset-0 bg-cover bg-center opacity-70"
           style={{ backgroundImage: "url('/images/hero-banner.jpg')" }}
         />
         <div className="relative max-w-7xl mx-auto text-center">
